@@ -14,19 +14,17 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
-const (
-	vaultAddress        = "http://dev-vault:8200"
+var (
+	vaultAddress        = "http://vault:8200"
 	vaultToken          = "root-token"
 	kubeConfVaultPath   = "secret/data/kube-conf"
 	appVersionVaultPath = "secret/data/nginx"
 	kubeLocalPath       = "/tmp/kube-conf"
 	appVersionLocalPath = "/tmp/app-version"
+	hostDNSName         = "host.docker.internal"
 
 	// Deployment specific attributes
-	appName = "nginx"
-)
-
-var (
+	appName        = "nginx"
 	replicas int32 = 2
 )
 
@@ -59,7 +57,7 @@ func GetSecretsFromVault() error {
 	// which resolves to the internal IP address used by the host.
 	// If this should not work for you, replace it with your real IP address.
 	confStr := string(kubeConf[:])
-	confStr = strings.Replace(confStr, "localhost", "host.docker.internal", 1)
+	confStr = strings.Replace(confStr, "localhost", hostDNSName, 1)
 	kubeConf = []byte(confStr)
 
 	// Write kube config to file
@@ -81,6 +79,7 @@ func GetSecretsFromVault() error {
 		log.Printf("Error: %s\n", err.Error())
 		return err
 	}
+	log.Println("All data has been retrieved from vault!")
 	return nil
 }
 
@@ -100,8 +99,23 @@ func CreateNamespace() error {
 		},
 	}
 
+	// Lookup if namespace already exists
+	nsClient := c.Core().Namespaces()
+	_, err = nsClient.Get(appName, metav1.GetOptions{})
+
+	// namespace exists
+	if err == nil {
+		log.Printf("Namespace '%s' already exists. Skipping!", appName)
+		return nil
+	}
+
 	// Create namespace
 	_, err = c.Core().Namespaces().Create(ns)
+	if err != nil {
+		return err
+	}
+
+	log.Printf("Service '%s' has been created!\n", appName)
 	return err
 }
 
@@ -167,6 +181,7 @@ func CreateDeployment() error {
 			log.Printf("Error: %s\n", err.Error())
 			return err
 		}
+		log.Printf("Deployment '%s' has been updated!\n", appName)
 		return nil
 	}
 
@@ -176,6 +191,7 @@ func CreateDeployment() error {
 		log.Printf("Error: %s\n", err.Error())
 		return err
 	}
+	log.Printf("Deployment '%s' has been created!\n", appName)
 	return nil
 }
 
@@ -211,15 +227,18 @@ func CreateService() error {
 
 	// Lookup for existing service
 	serviceClient := c.Core().Services(appName)
-	_, err = serviceClient.Get(appName, metav1.GetOptions{})
+	currService, err := serviceClient.Get(appName, metav1.GetOptions{})
 
 	// Service already exists
 	if err == nil {
+		s.ObjectMeta = currService.ObjectMeta
+		s.Spec.ClusterIP = currService.Spec.ClusterIP
 		_, err = serviceClient.Update(s)
 		if err != nil {
 			log.Printf("Error: %s\n", err.Error())
 			return err
 		}
+		log.Printf("Service '%s' has been updated!\n", appName)
 		return nil
 	}
 
@@ -229,6 +248,7 @@ func CreateService() error {
 		log.Printf("Error: %s\n", err.Error())
 		return err
 	}
+	log.Printf("Service '%s' has been created!\n", appName)
 	return nil
 }
 
