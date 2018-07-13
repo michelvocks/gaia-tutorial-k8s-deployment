@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io/ioutil"
+	"strings"
 
 	sdk "github.com/gaia-pipeline/gosdk"
 	"k8s.io/api/core/v1"
@@ -47,6 +48,14 @@ func GetSecretsFromVault() error {
 	if err != nil {
 		return err
 	}
+
+	// Convert config to string and replace localhost.
+	// We use here the magical DNS name "host.docker.internal",
+	// which resolves to the internal IP address used by the host.
+	// If this should not work for you, replace it with your real IP address.
+	confStr := string(kubeConf[:])
+	confStr = strings.Replace(confStr, "localhost", "host.docker.internal", 1)
+	kubeConf = []byte(confStr)
 
 	// Write kube config to file
 	if err = writeToFile(kubeLocalPath, kubeConf); err != nil {
