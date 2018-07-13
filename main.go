@@ -14,7 +14,7 @@ import (
 const (
 	vaultAddress        = "http://dev-vault:8200"
 	vaultToken          = "root-token"
-	kubeConfVaultPath   = "secret/kube-config"
+	kubeConfVaultPath   = "secret/kube-conf"
 	appVersionVaultPath = "secret/nginx"
 	kubeLocalPath       = "/tmp/kube-conf"
 	appVersionLocalPath = "/tmp/app-version"
