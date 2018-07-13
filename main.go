@@ -161,7 +161,7 @@ func CreateDeployment() error {
 	_, err = deployClient.Get(appName, metav1.GetOptions{})
 
 	// Deployment already exists
-	if err != nil {
+	if err == nil {
 		_, err = deployClient.Update(d)
 		if err != nil {
 			log.Printf("Error: %s\n", err.Error())
@@ -198,6 +198,7 @@ func CreateService() error {
 			Selector: map[string]string{
 				"app": appName,
 			},
+			Type: v1.ServiceTypeNodePort,
 			Ports: []v1.ServicePort{
 				v1.ServicePort{
 					Protocol:   v1.ProtocolTCP,
@@ -212,8 +213,8 @@ func CreateService() error {
 	serviceClient := c.Core().Services(appName)
 	_, err = serviceClient.Get(appName, metav1.GetOptions{})
 
-	// Deployment already exists
-	if err != nil {
+	// Service already exists
+	if err == nil {
 		_, err = serviceClient.Update(s)
 		if err != nil {
 			log.Printf("Error: %s\n", err.Error())
