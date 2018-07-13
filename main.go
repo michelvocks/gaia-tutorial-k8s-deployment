@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"strings"
 
 	sdk "github.com/gaia-pipeline/gosdk"
@@ -34,6 +35,7 @@ func GetSecretsFromVault() error {
 	// Create vault client
 	vaultClient, err := connectToVault()
 	if err != nil {
+		log.Printf("Error: %s\n", err.Error())
 		return err
 	}
 
@@ -41,11 +43,13 @@ func GetSecretsFromVault() error {
 	l := vaultClient.Logical()
 	s, err := l.Read(kubeConfVaultPath)
 	if err != nil {
+		log.Printf("Error: %s\n", err.Error())
 		return err
 	}
 	conf := s.Data["data"].(map[string]interface{})
 	kubeConf, err := base64.StdEncoding.DecodeString(conf["conf"].(string))
 	if err != nil {
+		log.Printf("Error: %s\n", err.Error())
 		return err
 	}
 
@@ -59,18 +63,21 @@ func GetSecretsFromVault() error {
 
 	// Write kube config to file
 	if err = writeToFile(kubeLocalPath, kubeConf); err != nil {
+		log.Printf("Error: %s\n", err.Error())
 		return err
 	}
 
 	// Read app image version from vault
 	v, err := l.Read(appVersionVaultPath)
 	if err != nil {
+		log.Printf("Error: %s\n", err.Error())
 		return err
 	}
 
 	// Write image version to file
 	version := (v.Data["data"].(map[string]interface{}))["version"].(string)
 	if err = writeToFile(appVersionLocalPath, []byte(version)); err != nil {
+		log.Printf("Error: %s\n", err.Error())
 		return err
 	}
 	return nil
@@ -103,12 +110,14 @@ func CreateDeployment() error {
 	// Get kubernetes client
 	c, err := getKubeClient(kubeLocalPath)
 	if err != nil {
+		log.Printf("Error: %s\n", err.Error())
 		return err
 	}
 
 	// Load image version from file
 	v, err := ioutil.ReadFile(appVersionLocalPath)
 	if err != nil {
+		log.Printf("Error: %s\n", err.Error())
 		return err
 	}
 
@@ -149,7 +158,11 @@ func CreateDeployment() error {
 	// Create deployment object in kubernetes
 	deployClient := c.ExtensionsV1beta1().Deployments(appName)
 	_, err = deployClient.Create(&d)
-	return err
+	if err != nil {
+		log.Printf("Error: %s\n", err.Error())
+		return err
+	}
+	return nil
 }
 
 func main() {
