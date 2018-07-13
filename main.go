@@ -6,9 +6,9 @@ import (
 	"io/ioutil"
 
 	sdk "github.com/gaia-pipeline/gosdk"
-	"k8s.io/client-go/pkg/api/unversioned"
-	"k8s.io/client-go/pkg/api/v1"
-	extensionsv1beta1 "k8s.io/client-go/pkg/apis/extensions/v1beta1"
+	"k8s.io/api/core/v1"
+	"k8s.io/api/extensions/v1beta1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
@@ -75,7 +75,7 @@ func CreateNamespace() error {
 
 	// Create namespace object
 	ns := &v1.Namespace{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name: appName,
 		},
 	}
@@ -102,16 +102,16 @@ func CreateDeployment() error {
 	}
 
 	// Create deployment object
-	d := extensionsv1beta1.Deployment{}
-	d.ObjectMeta = v1.ObjectMeta{
+	d := v1beta1.Deployment{}
+	d.ObjectMeta = metav1.ObjectMeta{
 		Name: appName,
 		Labels: map[string]string{
 			"app": appName,
 		},
 	}
-	d.Spec = extensionsv1beta1.DeploymentSpec{
+	d.Spec = v1beta1.DeploymentSpec{
 		Replicas: &replicas,
-		Selector: &unversioned.LabelSelector{
+		Selector: &metav1.LabelSelector{
 			MatchLabels: map[string]string{
 				"app": appName,
 			},
@@ -136,7 +136,7 @@ func CreateDeployment() error {
 	}
 
 	// Create deployment object in kubernetes
-	deployClient := c.ExtensionsV1beta1Client.Deployments(appName)
+	deployClient := c.ExtensionsV1beta1().Deployments(appName)
 	_, err = deployClient.Create(&d)
 	return err
 }
