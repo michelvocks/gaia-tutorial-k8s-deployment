@@ -85,6 +85,7 @@ func GetSecretsFromVault() error {
 }
 
 // CreateNamespace creates the namespace for our app.
+// If the namespace already exists nothing will happen.
 func CreateNamespace() error {
 	// Get kubernetes client
 	c, err := getKubeClient(kubeLocalPath)
@@ -104,9 +105,8 @@ func CreateNamespace() error {
 	return err
 }
 
-// CreateDeployment retrieves information from vault like
-// kube config and image version. Then it creates the
-// kubernetes deployment object.
+// CreateDeployment creates the kubernetes deployment.
+// If it already exists, it will be updated.
 func CreateDeployment() error {
 	// Get kubernetes client
 	c, err := getKubeClient(kubeLocalPath)
@@ -123,7 +123,7 @@ func CreateDeployment() error {
 	}
 
 	// Create deployment object
-	d := v1beta1.Deployment{}
+	d := &v1beta1.Deployment{}
 	d.ObjectMeta = metav1.ObjectMeta{
 		Name: appName,
 		Labels: map[string]string{
@@ -156,9 +156,22 @@ func CreateDeployment() error {
 		},
 	}
 
-	// Create deployment object in kubernetes
+	// Lookup existing deployments
 	deployClient := c.ExtensionsV1beta1().Deployments(appName)
-	_, err = deployClient.Create(&d)
+	_, err = deployClient.Get(appName, metav1.GetOptions{})
+
+	// Deployment already exists
+	if err != nil {
+		_, err = deployClient.Update(d)
+		if err != nil {
+			log.Printf("Error: %s\n", err.Error())
+			return err
+		}
+		return nil
+	}
+
+	// Create deployment object in kubernetes
+	_, err = deployClient.Create(d)
 	if err != nil {
 		log.Printf("Error: %s\n", err.Error())
 		return err
@@ -167,6 +180,7 @@ func CreateDeployment() error {
 }
 
 // CreateService creates the service for our application.
+// If the service already exists, it will be updated.
 func CreateService() error {
 	// Get kubernetes client
 	c, err := getKubeClient(kubeLocalPath)
@@ -194,8 +208,22 @@ func CreateService() error {
 		},
 	}
 
+	// Lookup for existing service
+	serviceClient := c.Core().Services(appName)
+	_, err = serviceClient.Get(appName, metav1.GetOptions{})
+
+	// Deployment already exists
+	if err != nil {
+		_, err = serviceClient.Update(s)
+		if err != nil {
+			log.Printf("Error: %s\n", err.Error())
+			return err
+		}
+		return nil
+	}
+
 	// Create service
-	_, err = c.Core().Services(appName).Create(s)
+	_, err = serviceClient.Create(s)
 	if err != nil {
 		log.Printf("Error: %s\n", err.Error())
 		return err
