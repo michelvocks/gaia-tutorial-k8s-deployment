@@ -11,6 +11,7 @@ import (
 	"k8s.io/api/core/v1"
 	"k8s.io/api/extensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 const (
@@ -165,25 +166,68 @@ func CreateDeployment() error {
 	return nil
 }
 
+// CreateService creates the service for our application.
+func CreateService() error {
+	// Get kubernetes client
+	c, err := getKubeClient(kubeLocalPath)
+	if err != nil {
+		log.Printf("Error: %s\n", err.Error())
+		return err
+	}
+
+	// Create service obj
+	s := &v1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: appName,
+		},
+		Spec: v1.ServiceSpec{
+			Selector: map[string]string{
+				"app": appName,
+			},
+			Ports: []v1.ServicePort{
+				v1.ServicePort{
+					Protocol:   v1.ProtocolTCP,
+					Port:       int32(8090),
+					TargetPort: intstr.FromInt(80),
+				},
+			},
+		},
+	}
+
+	// Create service
+	_, err = c.Core().Services(appName).Create(s)
+	if err != nil {
+		log.Printf("Error: %s\n", err.Error())
+		return err
+	}
+	return nil
+}
+
 func main() {
 	jobs := sdk.Jobs{
 		sdk.Job{
 			Handler:     GetSecretsFromVault,
-			Title:       "Get secrets from vault",
+			Title:       "Get secrets",
 			Description: "Get secrets from vault",
 			Priority:    0,
 		},
 		sdk.Job{
 			Handler:     CreateNamespace,
-			Title:       "Create kubernetes namespace",
-			Description: "Create kubernetes namespace if not exist",
+			Title:       "Create namespace",
+			Description: "Create kubernetes namespace",
 			Priority:    10,
 		},
 		sdk.Job{
 			Handler:     CreateDeployment,
-			Title:       "Create kubernetes app deployment",
-			Description: "Create kubernetes app deplyment",
+			Title:       "Create deployment",
+			Description: "Create kubernetes app deployment",
 			Priority:    20,
+		},
+		sdk.Job{
+			Handler:     CreateService,
+			Title:       "Create Service",
+			Description: "Create kubernetes service which exposes the service",
+			Priority:    30,
 		},
 	}
 
