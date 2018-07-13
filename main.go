@@ -12,10 +12,10 @@ import (
 )
 
 const (
-	vaultAddress        = "http://dev-vault:8200"
+	vaultAddress        = "http://localhost:8200"
 	vaultToken          = "root-token"
-	kubeConfVaultPath   = "secret/kube-conf"
-	appVersionVaultPath = "secret/nginx"
+	kubeConfVaultPath   = "secret/data/kube-conf"
+	appVersionVaultPath = "secret/data/nginx"
 	kubeLocalPath       = "/tmp/kube-conf"
 	appVersionLocalPath = "/tmp/app-version"
 
@@ -42,7 +42,8 @@ func GetSecretsFromVault() error {
 	if err != nil {
 		return err
 	}
-	kubeConf, err := base64.StdEncoding.DecodeString(s.Data["conf"].(string))
+	conf := s.Data["data"].(map[string]interface{})
+	kubeConf, err := base64.StdEncoding.DecodeString(conf["conf"].(string))
 	if err != nil {
 		return err
 	}
@@ -59,7 +60,8 @@ func GetSecretsFromVault() error {
 	}
 
 	// Write image version to file
-	if err = writeToFile(appVersionLocalPath, v.Data["version"]); err != nil {
+	version := (v.Data["data"].(map[string]interface{}))["version"].(string)
+	if err = writeToFile(appVersionLocalPath, []byte(version)); err != nil {
 		return err
 	}
 	return nil

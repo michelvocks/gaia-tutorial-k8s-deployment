@@ -23,7 +23,7 @@ func getKubeClient(configPath string) (*kubernetes.Clientset, error) {
 }
 
 // writeToFile writes bytes to local file.
-func writeToFile(path string, content interface{}) error {
+func writeToFile(path string, content []byte) error {
 	// Create file
 	f, err := os.Create(path)
 	if err != nil {
@@ -31,14 +31,8 @@ func writeToFile(path string, content interface{}) error {
 	}
 	defer f.Close()
 
-	// Convert interface to byte array
-	b, ok := content.([]byte)
-	if !ok {
-		return err
-	}
-
 	// Write to file
-	_, err = f.Write(b)
+	_, err = f.Write(content)
 	return err
 }
 
